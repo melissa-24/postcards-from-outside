@@ -147,3 +147,7 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# CLIP experiment: Wikimedia test photos (various licenses) and local results
+experiments/**/photos/
+experiments/**/results-*.json

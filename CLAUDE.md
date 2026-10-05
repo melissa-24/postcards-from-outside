@@ -85,3 +85,7 @@ Nice-to-haves, only if time allows: a seasonal **sticker book** saved in localSt
 - Explain *why* briefly when making a non-obvious choice; I'll be writing a DEV post about the build.
 - Ask before adding new dependencies.
 - Keep the code readable with short comments; I'm an experienced developer and former instructor.
+- Never run git commands (not even status or log). I handle all version control myself.
+- I write the React screens, data/items.js, and lib/buildHunt.js. Claude writes the other lib/ files and PWA setup.
+- Keep changes small, explain them briefly, and tell me how to test them. Don't run tests or the app unless I ask.
+- When I write code, review it and suggest fixes; don't rewrite it.
