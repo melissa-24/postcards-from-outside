@@ -2,21 +2,23 @@
 //
 // Messages in:
 //   { type: "load" }
-//   { type: "check", id, blob, match, decoys }
+//   { type: "check", id, blob, match, decoys, skipBackground? }
 // Messages out:
 //   { type: "progress", progress }   0–100 while model files load
 //   { type: "ready" }
-//   { type: "result", id, found, score, top }
+//   { type: "result", id, found, score, top, scores }   scores: every label, highest first
 //   { type: "error", id?, message }
 import { pipeline, env, RawImage } from "@huggingface/transformers";
 
 const MODEL_ID = "Xenova/clip-vit-base-patch32";
-const THRESHOLD = 0.7; // tuned in experiments/clip-wasm: true matches ≥ 0.835, false ones ≤ 0.546
+// Tuned in experiments/clip-wasm with background decoys: true matches ≥ 0.599, false ones ≤ 0.232.
+const THRESHOLD = 0.4;
 const DEBUG = import.meta.env.DEV; // logs to the console in dev, silent in production
 
 // Added to every check. Without them, a photo that matches none of the item's
 // labels still gives its confidence to one of them, often the match label.
-const BACKGROUND_DECOYS = ["grass", "pavement", "the sky", "a person"];
+// An item can opt out of any of these with skipBackground (e.g. a cloud skips "the sky").
+const BACKGROUND_DECOYS = ["grass", "pavement", "the sky"];
 
 env.allowLocalModels = false; // always use the Hub, then the browser cache
 
@@ -39,10 +41,11 @@ function loadModel() {
   return classifierPromise;
 }
 
-async function check({ id, blob, match, decoys }) {
+async function check({ id, blob, match, decoys, skipBackground = [] }) {
   const classifier = await loadModel();
+  const background = BACKGROUND_DECOYS.filter((label) => !skipBackground.includes(label));
   // Dedupe in case an item already lists a background label as a decoy.
-  const labels = [...new Set([match, ...decoys, ...BACKGROUND_DECOYS])];
+  const labels = [...new Set([match, ...decoys, ...background])];
 
   const t0 = performance.now();
   const image = await RawImage.fromBlob(blob);
@@ -57,7 +60,7 @@ async function check({ id, blob, match, decoys }) {
     console.table(scores);
     console.groupEnd();
   }
-  return { id, found, score: scores.find((s) => s.label === match).score, top: top.label };
+  return { id, found, score: scores.find((s) => s.label === match).score, top: top.label, scores };
 }
 
 self.onmessage = async ({ data }) => {

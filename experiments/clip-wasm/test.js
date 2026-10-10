@@ -1,7 +1,8 @@
-// Throwaway test page: cold load, warm load (fresh worker, cached files),
-// then each photo checked against its own item and against a wrong item.
+// Experiment page for the real vision worker.
+// - Default: load the model, then check your own photo with the form.
+// - ?mode=<name>: also run the 12 sample checks and save results-<name>.json.
 
-const ITEMS = [
+const SAMPLES = [
   { photo: "maple-leaf", match: "a red maple leaf", decoys: ["a green leaf", "grass", "a rock"] },
   { photo: "fire-hydrant", match: "a fire hydrant", decoys: ["a mailbox", "a trash can", "a traffic cone"] },
   { photo: "pine-cone", match: "a pine cone", decoys: ["a rock", "a brown leaf", "a stick"] },
@@ -10,69 +11,69 @@ const ITEMS = [
   { photo: "park-bench", match: "a park bench", decoys: ["a picnic table", "a fence", "a chair"] },
 ];
 
-const out = document.getElementById("out");
-const log = (line) => (out.textContent += line + "\n");
+const $ = (id) => document.getElementById(id);
+const log = (line) => ($("out").textContent += line + "\n");
+const split = (s) => s.split(",").map((x) => x.trim()).filter(Boolean);
 
-// Wrap the worker in a tiny request/response helper.
-function startWorker() {
-  const worker = new Worker(new URL("./worker.js", import.meta.url), { type: "module" });
-  let waiting = null;
-  worker.onmessage = ({ data }) => {
-    if (data.type === "progress") return; // keep the log readable
-    if (data.type === "error") log("ERROR: " + data.message);
-    waiting?.(data);
-  };
-  const send = (msg) => new Promise((resolve) => { waiting = resolve; worker.postMessage(msg); });
-  return { worker, send };
+// The same worker file the app uses.
+const worker = new Worker(new URL("../../src/lib/vision.worker.js", import.meta.url), { type: "module" });
+
+// Turn worker messages into promises keyed by id.
+let nextId = 1;
+const pending = new Map();
+let onReady;
+worker.onmessage = ({ data }) => {
+  if (data.type === "progress") $("status").textContent = `Loading model… ${Math.round(data.progress)}%`;
+  else if (data.type === "ready") onReady();
+  else if (data.id != null) pending.get(data.id)?.(data), pending.delete(data.id);
+  else if (data.type === "error") $("status").textContent = "Error: " + data.message;
+};
+const check = (msg) => new Promise((resolve) => {
+  const id = nextId++;
+  pending.set(id, resolve);
+  worker.postMessage({ type: "check", id, ...msg });
+});
+
+function formatResult(r) {
+  if (r.type === "error") return "ERROR: " + r.message;
+  const rows = r.scores.map((s) => `  ${s.score.toFixed(3)}  ${s.label}`).join("\n");
+  return `${r.found ? "FOUND" : "not found"} (match score ${r.score.toFixed(3)})\n${rows}`;
 }
 
-async function run() {
-  const results = { userAgent: navigator.userAgent, cores: navigator.hardwareConcurrency, checks: [] };
+// Your own photo.
+$("form").onsubmit = async (e) => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  const blob = f.get("photo");
+  $("preview").src = URL.createObjectURL(blob);
+  $("preview").hidden = false;
+  $("out").textContent = "Checking…";
+  const r = await check({ blob, match: f.get("match").trim(), decoys: split(f.get("decoys")), skipBackground: split(f.get("skip")) });
+  $("out").textContent = formatResult(r);
+};
 
-  log("Cold load (downloads model on first visit)...");
-  let w = startWorker();
-  const cold = await w.send({ type: "load" });
-  if (cold.type === "error") return finish(results);
-  Object.assign(results, { coldLoadMs: cold.ms, numThreads: cold.numThreads, crossOriginIsolated: cold.crossOriginIsolated });
-  log(`  ${cold.ms.toFixed(0)} ms (threads: ${cold.numThreads}, isolated: ${cold.crossOriginIsolated})`);
-
-  // A fresh worker simulates reopening the app: files come from the browser cache.
-  w.worker.terminate();
-  log("Warm load (fresh worker, cached files)...");
-  w = startWorker();
-  const warm = await w.send({ type: "load" });
-  results.warmLoadMs = warm.ms;
-  log(`  ${warm.ms.toFixed(0)} ms`);
-
-  for (const [i, item] of ITEMS.entries()) {
+// The 12 sample checks: each photo against its own item and the next one.
+async function runSamples(mode) {
+  const checks = [];
+  for (const [i, item] of SAMPLES.entries()) {
     const blob = await (await fetch(`./photos/${item.photo}.jpg`)).blob();
-    const wrong = ITEMS[(i + 1) % ITEMS.length]; // check the photo against the next item too
+    const wrong = SAMPLES[(i + 1) % SAMPLES.length];
     for (const [kind, target] of [["right", item], ["wrong", wrong]]) {
-      const labels = [target.match, ...target.decoys];
-      const r = await w.send({ type: "classify", id: item.photo, blob, labels });
-      const top = r.scores[0];
-      const found = top.label === target.match;
-      const check = {
-        photo: item.photo, kind, lookingFor: target.match, found,
-        top: top.label, topScore: +top.score.toFixed(3),
-        matchScore: +r.scores.find((s) => s.label === target.match).score.toFixed(3),
-        decodeMs: Math.round(r.decodeMs), inferMs: Math.round(r.inferMs),
-      };
-      results.checks.push(check);
-      log(`  ${item.photo} vs "${target.match}" → ${found ? "FOUND" : "not found"} (top: ${top.label} ${check.topScore}) ${check.inferMs} ms`);
+      const r = await check({ blob, match: target.match, decoys: target.decoys });
+      checks.push({ photo: item.photo, kind, lookingFor: target.match, found: r.found, matchScore: +r.score.toFixed(3), top: r.top,
+        scores: r.scores.map((s) => `${s.score.toFixed(3)} ${s.label}`) });
+      log(`${item.photo} vs "${target.match}": ${formatResult(r)}\n`);
     }
   }
-  finish(results);
-}
-
-// Send results to the dev server so they can be read from disk.
-async function finish(results) {
-  log("\n" + JSON.stringify(results, null, 2));
-  await fetch(`/__results?mode=${new URLSearchParams(location.search).get("mode") || "plain"}`, {
-    method: "POST",
-    body: JSON.stringify(results),
-  });
+  await fetch(`/__results?mode=${mode}`, { method: "POST", body: JSON.stringify({ checks }) });
   document.title = "DONE";
 }
 
-run();
+const t0 = performance.now();
+worker.postMessage({ type: "load" });
+await new Promise((resolve) => (onReady = resolve));
+$("status").textContent = `Model ready in ${((performance.now() - t0) / 1000).toFixed(1)} s`;
+$("form").querySelector("button").disabled = false;
+
+const mode = new URLSearchParams(location.search).get("mode");
+if (mode) runSamples(mode);

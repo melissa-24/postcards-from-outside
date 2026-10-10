@@ -4,9 +4,32 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CLIP wasm test</title>
+    <style>
+      body { font: 16px system-ui, sans-serif; margin: 16px; max-width: 40rem; }
+      label { display: block; margin: 0.75rem 0 0.25rem; }
+      input[type="text"] { width: 100%; padding: 0.5rem; box-sizing: border-box; }
+      button { margin-top: 1rem; padding: 0.75rem 1.5rem; font-size: 1rem; }
+      img { max-width: 100%; max-height: 240px; margin-top: 0.75rem; }
+      pre { white-space: pre-wrap; font-size: 13px; }
+    </style>
   </head>
   <body>
-    <pre id="out" style="white-space: pre-wrap; font-size: 13px"></pre>
+    <h1>CLIP photo check</h1>
+    <p id="status">Loading model…</p>
+
+    <!-- Try your own photo. Uses the real src/lib/vision.worker.js. -->
+    <form id="form">
+      <label>Photo <input type="file" name="photo" accept="image/*" required /></label>
+      <label>Match <input type="text" name="match" value="a red maple leaf" /></label>
+      <label>Decoys (comma-separated) <input type="text" name="decoys" value="a green leaf, a rock" /></label>
+      <label>Skip background labels (comma-separated, e.g. the sky)
+        <input type="text" name="skip" placeholder="optional" />
+      </label>
+      <button disabled>Check</button>
+    </form>
+    <img id="preview" alt="" hidden />
+    <pre id="out"></pre>
+
     <script type="module" src="./test.js"></script>
   </body>
 </html>

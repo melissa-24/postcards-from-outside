@@ -17,6 +17,7 @@ const SPRING = [3, 4, 5];
 const SUMMER = [6, 7, 8];
 
 // Hand-written list of things to find. Filtered and shuffled by buildHunt.js.
+// FIX: Don't rename ids once challenge links are shared. Old links would break.
 export const ITEMS = [
     {
         id: "red-leaf",
@@ -86,7 +87,8 @@ export const ITEMS = [
         regions: ["anywhere"],
         months: ALL_YEAR,
         match: "a cloud",
-        decoys: ["blue sky", "a plane", "a bird"],
+        decoys: ["a plane", "a bird"],      // FIX: removed "blue sky", it competes with clouds in a blue sky
+        skipBackground: ["the sky"],        // FIX: a cloud photo is mostly sky
     },
     {
         id: "park-bench",
@@ -97,6 +99,7 @@ export const ITEMS = [
         months: ALL_YEAR,
         match: "a park bench",
         decoys: ["swings", "a light post"],
+        skipBackground: ["pavement"],       // FIX: benches sit beside paths (scored 0.599 in testing)
     },
     {
         id: "mailbox",
@@ -115,14 +118,14 @@ export const ITEMS = [
         who: ["kids", "dog"],
         regions: ["anywhere"],
         months: ALL_YEAR,
-        match: "another dog",
+        match: "a dog",                     // FIX: "another" doesn't help CLIP (Tucker will count too!)
         decoys: ["a chipmunk", "a cat", "a squirrel"],
     },
     {
         id: "flower",
         label: "A flower",
         emoji: "🌼",
-        who: ["kids", "easy",],
+        who: ["kids", "easy"],
         regions: ["anywhere"],
         months: [...SPRING, ...FALL, ...SUMMER],
         match: "a flower",
@@ -137,16 +140,17 @@ export const ITEMS = [
         months: FALL,
         match: "an acorn",
         decoys: ["a pinecone", "a black walnut"],
+        skipBackground: ["grass"],          // FIX: acorns lie in grass
     },
     {
         id: "pinecone",
         label: "A pinecone",
         emoji: "🌲",
-        who: ["kids", "adults","dog"],
+        who: ["kids", "adults", "dog"],
         regions: ["north", "middle"],
         months: [...FALL, ...WINTER],
-        match: "a pinecone",
-        decoys: ["a acorn", "a piece of bark", "a stick"],
+        match: "a pine cone",               // FIX: the wording tested at 0.998
+        decoys: ["an acorn", "a piece of bark", "a stick"], // FIX: "an acorn"
     },
     {
         id: "pumpkin",
@@ -154,13 +158,13 @@ export const ITEMS = [
         emoji: "🎃",
         who: ["kids", "adults", "easy", "dog"],
         regions: ["north", "middle"],
-        months: [9,10],
+        months: [9, 10],
         match: "a pumpkin",
-        decoys: ["a squash", "a orange ball", "a basketball"],
+        decoys: ["a basketball", "an orange flower pot"], // FIX: "a squash" is also true of a pumpkin
     },
 ];
 
-// Dev-only: warn about missing fields and typos in who/regions
+// Dev-only: warn about missing fields and typos
 if (import.meta.env.DEV) {
     const whoIds = WHO.map((w) => w.id);
     const required = ["id", "label", "emoji", "who", "regions", "months", "match", "decoys"];
@@ -177,6 +181,13 @@ if (import.meta.env.DEV) {
         }
         for (const r of item.regions) {
             if (!REGIONS.includes(r)) console.warn(`items.js: "${item.id}" has unknown region "${r}"`);
+        }
+        // FIX: catch month typos and empty decoys
+        if (item.months.some((m) => m < 1 || m > 12)) {
+            console.warn(`items.js: "${item.id}" has a month outside 1-12`);
+        }
+        if (item.decoys.length === 0) {
+            console.warn(`items.js: "${item.id}" has no decoys`);
         }
     }
 }

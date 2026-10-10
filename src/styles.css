@@ -1,0 +1,288 @@
+/* Postcards from Outside: one plain stylesheet, matched to the class names in src/screens.
+   Phone-first, used outdoors: big tap targets, high contrast, minimal reading. */
+
+/* ---------- Palette & sizes ---------- */
+:root {
+  --paper: #f6efe2;      /* same cream as the postcard */
+  --card: #fffaf2;
+  --ink: #3b2a1a;        /* dark brown text: high contrast in sunlight */
+  --muted: #6e5a45;
+  --line: #e2d4bd;
+  --accent: #c2571a;     /* pumpkin; matches theme-color in index.html */
+  --accent-dark: #9a4212;
+  --accent-soft: #fbe3d2;
+  --leaf: #5f7a2e;       /* found-it green */
+  --leaf-soft: #eef3e2;
+  --radius: 16px;
+  --tap: 56px;           /* minimum height for anything tappable */
+  --shadow: 0 2px 8px rgb(59 42 26 / 0.12);
+}
+
+/* ---------- Base ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 18px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Spacing comes from the flex gap in .screen, so no default margins. */
+h1, h2, p { margin: 0; }
+h1, h2 { font-family: Georgia, "Times New Roman", serif; line-height: 1.15; }
+h1 { font-size: 2rem; }
+h2 { font-size: 1.5rem; }
+
+/* <section class="screen">. Safe-area padding clears the notch and home bar. */
+.screen {
+  max-width: 32rem;
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+    max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.hint { font-size: 0.95rem; color: var(--muted); }
+
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+
+/* ---------- Buttons ----------
+   Plain <button> (no class) is the quieter, outlined button: "Look up", and the
+   second choice in a result sheet. .big-button is the main action. */
+button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 12px 20px;
+  border: 2px solid var(--accent);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--accent-dark);
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+button:active { transform: scale(0.98); }
+button:disabled { opacity: 0.5; cursor: default; transform: none; }
+
+.big-button {
+  background: var(--accent);
+  color: #fff;
+  font-size: 1.25rem;
+}
+.big-button:active { background: var(--accent-dark); }
+
+/* Looks like a link: "Change" inside a sentence, or "We're done" at the bottom of the hunt. */
+.link-button {
+  display: inline;
+  width: auto;
+  min-height: 0;
+  padding: 8px 4px; /* a bigger tap area without looking like a button */
+  border: none;
+  background: none;
+  color: var(--accent-dark);
+  font-size: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+/* On its own line it needs a full-height tap target (inline elements ignore min-height). */
+.screen > .link-button { display: flex; align-self: center; min-height: var(--tap); }
+
+/* ---------- Form fields ---------- */
+fieldset {
+  margin: 0;
+  padding: 0;
+  border: none;
+  display: grid;
+  gap: 10px;
+}
+legend { padding: 0; margin-bottom: 10px; font-size: 1.15rem; font-weight: 600; }
+legend em { font-weight: 400; color: var(--muted); }
+
+/* Who's coming: two columns of tiles. (Hunt size has two tiles, so it gets two columns too.) */
+fieldset:has(> .choice) { grid-template-columns: 1fr 1fr; }
+
+/* 16px or larger stops iPhone Safari from zooming in when a field is focused. */
+input[type="text"] {
+  width: 100%;
+  min-height: var(--tap);
+  padding: 12px 14px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  font-size: 1.1rem;
+}
+input[type="text"]:focus { border-color: var(--accent); outline: none; }
+
+input[type="checkbox"], input[type="radio"] {
+  width: 1.4rem;
+  height: 1.4rem;
+  margin: 0;
+  flex: none;
+  accent-color: var(--accent);
+}
+
+/* <label class="field"><span>Label</span><input></label> */
+.field { display: grid; gap: 8px; }
+.field > span { font-weight: 600; }
+
+/* <form class="inline-form"><input><button>: input and button side by side. */
+.inline-form { display: flex; gap: 8px; }
+.inline-form input { flex: 1; min-width: 0; }
+.inline-form button { width: auto; flex: none; }
+
+/* <label class="choice"><input type="checkbox|radio"><span>…</span></label> as a big tile */
+.choice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--tap);
+  padding: 12px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--card);
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+}
+.choice:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* ---------- Progress (GettingReady) ---------- */
+.progress {
+  height: 14px;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+}
+.progress-bar {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+/* At 100% the files are in but the model is still setting up (~7 s on a laptop):
+   moving stripes show it hasn't frozen. Driven by the existing aria-valuenow. */
+.progress[aria-valuenow="100"] .progress-bar {
+  background: repeating-linear-gradient(-45deg, var(--accent) 0 12px, var(--accent-dark) 12px 24px);
+  background-size: 34px 34px;
+  animation: stripes 1s linear infinite;
+}
+@keyframes stripes { to { background-position: 34px 0; } }
+
+/* ---------- Hunt checklist ---------- */
+.item-list { display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 0; list-style: none; }
+
+.item-card {
+  justify-content: flex-start;
+  gap: 14px;
+  min-height: 80px;
+  padding: 12px 16px;
+  border-color: var(--line);
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+  text-align: left;
+}
+.item-card.done { border-color: var(--leaf); background: var(--leaf-soft); }
+.item-card.done .item-label { color: var(--leaf); }
+
+/* Emoji and thumbnail share one 56px slot so labels line up either way. */
+.item-emoji { width: 56px; font-size: 2.2rem; line-height: 1; text-align: center; flex: none; }
+.thumb { width: 56px; height: 56px; object-fit: cover; border-radius: 10px; flex: none; }
+.item-label { flex: 1; font-size: 1.15rem; }
+.item-status { font-size: 1.5rem; flex: none; }
+
+/* ---------- Postcard ---------- */
+/* A plain <form> directly in a screen (the title step) stacks like the screen does. */
+.screen > form { display: flex; flex-direction: column; gap: 16px; }
+
+/* The finished postcard, a little tilted like it was dropped on the table. */
+.postcard-preview {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 4px;
+  box-shadow: 0 6px 20px rgb(59 42 26 / 0.25);
+  transform: rotate(-1deg);
+  margin: 8px 0;
+}
+
+/* A row of link-buttons ("Change the title · Start a new hunt"), centered at the bottom. */
+.screen > p:has(> .link-button) { text-align: center; color: var(--muted); }
+
+/* ---------- Sheet (checking / result) ----------
+   Content sits directly inside .sheet, so the dimmed backdrop and the panel
+   background are drawn with ::before and ::after behind it. The backdrop also
+   blocks taps on the cards underneath until a button is chosen. */
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  max-width: 32rem;
+  margin: 0 auto;
+  padding: 28px 16px max(24px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  text-align: center;
+  animation: fade-in 0.2s ease-out;
+}
+.sheet::before { /* backdrop over the whole screen */
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: rgb(59 42 26 / 0.45);
+}
+.sheet::after { /* the panel itself, painted above the backdrop */
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 24px 24px 0 0;
+  background: var(--paper);
+  box-shadow: 0 -4px 24px rgb(59 42 26 / 0.2);
+}
+/* "Found it!": green heading plus a green band across the top of the panel,
+   so the result reads at a glance, before anyone reads the words. */
+.sheet.found h2 { color: var(--leaf); }
+.sheet.found::after { border-top: 6px solid var(--leaf); }
+
+/* Fade, not slide: a transform on .sheet would pin the ::before backdrop to the sheet. */
+@keyframes fade-in { from { opacity: 0; } }
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto;
+  border: 5px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Respect "reduce motion": no fades, stripes, or press effects. The spinner slows
+   to a gentle turn instead of stopping, so "checking" still looks alive. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  .spinner { animation: spin 3s linear infinite !important; }
+  button:active { transform: none; }
+}
