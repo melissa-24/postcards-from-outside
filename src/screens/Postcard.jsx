@@ -111,10 +111,10 @@ export default function Postcard({ photos, items, choices, onPlayAgain }) {
                 Share
             </button>
 
-            <button className="big-button" onClick={handleChallenge}>
+            {/* <button className="big-button" onClick={handleChallenge}>
                 Challenge a friend
             </button>
-            <p className="hint">Sends a link with the same list, so they can go find them too.</p>
+            <p className="hint">Sends a link with the same list, so they can go find them too.</p> */}
 
             {message && <p className="hint">{message}</p>}
 
