@@ -2,18 +2,24 @@ import { StrictMode, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import './styles.css'
 import Setup from './screens/Setup'
+import Challenged from './screens/Challenged'
 import GettingReady from './screens/GettingReady'
 import Hunt from './screens/Hunt'
 import Postcard from './screens/Postcard'
 import { buildHunt } from './lib/buildHunt'
+import { readChallenge, clearChallenge } from './lib/challenge'
 
 function App() {
-  // setup → ready → hunt → postcard (Home comes later)
-  const [screen, setScreen] = useState('setup')
-  const [choices, setChoices] = useState(null) // what they picked on Setup
+  // Check once on load: did they open a challenge link?
+  const [challenge] = useState(() => readChallenge())
+
+  // challenged/setup → ready → hunt → postcard
+  const [screen, setScreen] = useState(challenge ? 'challenged' : 'setup')
+  const [choices, setChoices] = useState(null) // names, who, etc. for the postcard
   const [hunt, setHunt] = useState([])         // the items to find
   const [photos, setPhotos] = useState([])     // found photos, for the postcard
 
+  // Normal hunt from the Setup screen
   function handleStart(picked) {
     const items = buildHunt({
       who: picked.who,
@@ -26,7 +32,26 @@ function App() {
     setScreen('ready')
   }
 
+  // Accepting a friend's challenge: same items they had
+  function handleChallengeStart({ names, dog }) {
+    setChoices({
+      who: dog ? ['dog'] : [],
+      names,
+      region: null,
+      place: null,
+      size: challenge.items.length,
+    })
+    setHunt(challenge.items)
+    setScreen('ready')
+  }
+
+  function skipChallenge() {
+    clearChallenge() // remove #challenge=... from the address bar
+    setScreen('setup')
+  }
+
   function playAgain() {
+    clearChallenge()
     setPhotos([])
     setHunt([])
     setScreen('setup')
@@ -34,6 +59,10 @@ function App() {
 
   return (
     <main className="app">
+      {screen === 'challenged' && (
+        <Challenged challenge={challenge} onStart={handleChallengeStart} onSkip={skipChallenge} />
+      )}
+
       {screen === 'setup' && <Setup onStart={handleStart} />}
 
       {screen === 'ready' && <GettingReady onReady={() => setScreen('hunt')} />}
@@ -42,6 +71,7 @@ function App() {
         <Hunt
           items={hunt}
           onDone={(picked) => {
+            clearChallenge() // finished, so a refresh won't restart the challenge
             setPhotos(picked)
             setScreen('postcard')
           }}
